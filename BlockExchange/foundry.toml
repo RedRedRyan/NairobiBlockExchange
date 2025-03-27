@@ -4,7 +4,9 @@ out = "out"
 libs = ["lib"]
 remappings = [
     '@openzeppelin/=lib/openzeppelin-contracts/',
-    '@hashgraph/=lib/hedera-forking/'
+    '@hashgraph/hedera-token-service/=lib/hedera-token-service/'
+
+
 ]
 
 

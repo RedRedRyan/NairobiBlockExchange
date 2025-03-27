@@ -7,6 +7,10 @@ The Nairobi Block Exchange (NBX) is a blockchain-based SME stock exchange built 
 ### **2.1 The Problem Statement**  
 Access to capital remains a significant challenge for SMEs, with traditional stock exchanges imposing high listing costs and strict regulatory requirements. As a result, many SMEs struggle to secure funding through equity markets, limiting their growth potential.
 
+The general public also have a barrier of entry into investement are are there fore sidelined in nation building. 
+
+By bringing more of the population into the investment space, we can help to build a more inclusive and equitable economy.
+
 ### **2.2 The Solution**  
 NBX leverages blockchain technology to facilitate the issuance and trading of security tokens, democratizing access to investment opportunities while ensuring transparency, regulatory compliance, and security.
 

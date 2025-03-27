@@ -14,7 +14,6 @@ pragma solidity ^0.8.0;
  *      - Real-time auditable financial data for regulators
  *      - DAO-based governance mechanisms for shareholders
  */
-
 import "@hashgraph/hedera-token-service/contracts/HTS.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -24,13 +23,13 @@ contract BlockExchange is Ownable {
 
     // Hedera Token Service (HTS) Token ID for this security token
     address public immutable htsTokenId;
-    
+
     // USDT Token ID on Hedera for dividend payouts
     address public immutable usdtTokenId;
-    
+
     // Company Treasury Wallet for Dividend Distribution
     address public immutable treasuryWallet;
-    
+
     // Company Metadata
     string public companyName;
 
@@ -40,16 +39,16 @@ contract BlockExchange is Ownable {
     // Dividend Tracking
     mapping(address => uint256) private withdrawnDividends;
     uint256 public totalDividendsDistributed;
-    
+
     // Governance (Shareholder Voting Power)
     mapping(address => uint256) public governanceVotes;
-    
+
     // Event Logs
     event DividendsDistributed(uint256 amount);
     event DividendClaimed(address indexed shareholder, uint256 amount);
     event ShareholderWhitelisted(address indexed investor, bool status);
     event GovernanceVoteCasted(address indexed voter, uint256 votes);
-    
+
     /**
      * @dev Constructor to initialize the SME Security Token
      * @param _companyName Name of the SME
@@ -57,12 +56,7 @@ contract BlockExchange is Ownable {
      * @param _usdtTokenId The Hedera Token ID of USDT for dividend payouts
      * @param _treasuryWallet Address of the company's treasury for dividend distribution
      */
-    constructor(
-        string memory _companyName,
-        address _htsTokenId,
-        address _usdtTokenId,
-        address _treasuryWallet
-    ) {
+    constructor(string memory _companyName, address _htsTokenId, address _usdtTokenId, address _treasuryWallet) {
         require(_htsTokenId != address(0), "Invalid token ID");
         require(_usdtTokenId != address(0), "Invalid USDT token ID");
         require(_treasuryWallet != address(0), "Invalid treasury wallet");
@@ -102,10 +96,10 @@ contract BlockExchange is Ownable {
         require(isWhitelisted[msg.sender], "Investor not whitelisted");
         uint256 shareholderBalance = HTS.balanceOf(htsTokenId, msg.sender);
         require(shareholderBalance > 0, "No shares owned");
-        
+
         uint256 claimableAmount = (totalDividendsDistributed.mul(shareholderBalance)) / HTS.totalSupply(htsTokenId);
         require(claimableAmount > withdrawnDividends[msg.sender], "No dividends to claim");
-        
+
         uint256 amountToWithdraw = claimableAmount.sub(withdrawnDividends[msg.sender]);
         withdrawnDividends[msg.sender] = claimableAmount;
 
@@ -120,7 +114,7 @@ contract BlockExchange is Ownable {
         require(isWhitelisted[msg.sender], "Investor not whitelisted");
         uint256 shareholderBalance = HTS.balanceOf(htsTokenId, msg.sender);
         require(shareholderBalance >= votes, "Insufficient votes");
-        
+
         governanceVotes[msg.sender] = votes;
         emit GovernanceVoteCasted(msg.sender, votes);
     }

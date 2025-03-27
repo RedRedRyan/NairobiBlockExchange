@@ -7,3 +7,6 @@
 [submodule "BlockExchange/lib/hedera-forking"]
 	path = BlockExchange/lib/hedera-forking
 	url = https://github.com/hashgraph/hedera-forking
+[submodule "BlockExchange/lib/hedera-smart-contracts"]
+	path = BlockExchange/lib/hedera-smart-contracts
+	url = https://github.com/hashgraph/hedera-smart-contracts

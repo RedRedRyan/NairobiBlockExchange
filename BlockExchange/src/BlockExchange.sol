@@ -14,12 +14,10 @@ pragma solidity ^0.8.0;
  *      - Real-time auditable financial data for regulators
  *      - DAO-based governance mechanisms for shareholders
  */
-import "@hashgraph/hedera-token-service/contracts/HTS.sol";
+import "../lib/hedera-forking/contracts/HederaTokenService.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract BlockExchange is Ownable {
-    using SafeMath for uint256;
 
     // Hedera Token Service (HTS) Token ID for this security token
     address public immutable htsTokenId;

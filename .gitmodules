@@ -4,3 +4,6 @@
 [submodule "BlockExchange/lib/openzeppelin-contracts"]
 	path = BlockExchange/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "BlockExchange/lib/hedera-forking"]
+	path = BlockExchange/lib/hedera-forking
+	url = https://github.com/hashgraph/hedera-forking

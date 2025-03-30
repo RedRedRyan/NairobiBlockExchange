@@ -42,11 +42,7 @@ contract BlockExchangeFactory is Ownable {
 
         // Deploy a new BlockExchange contract with all required parameters
         BlockExchange newExchange = new BlockExchange(
-            _companyName,
-            _hederaTokenServiceTokenId,
-            _usdtTokenId,
-            _treasuryWallet,
-            _initialSecurityTokenSupply
+            _companyName, _hederaTokenServiceTokenId, _usdtTokenId, _treasuryWallet, _initialSecurityTokenSupply
         );
 
         // Transfer ownership of the new exchange to the caller

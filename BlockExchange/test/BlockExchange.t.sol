@@ -38,13 +38,7 @@ contract BlockExchangeTest is Test {
         );
 
         // Deploy the BlockExchange contract
-        smeToken = new BlockExchange(
-            "Test Company",
-            mockHtsTokenId,
-            mockUsdtTokenId,
-            treasuryWallet,
-            INITIAL_SUPPLY
-        );
+        smeToken = new BlockExchange("Test Company", mockHtsTokenId, mockUsdtTokenId, treasuryWallet, INITIAL_SUPPLY);
 
         // Whitelist the investor (treasuryWallet is already whitelisted by constructor)
         smeToken.whitelistInvestor(investor, true);
@@ -112,11 +106,7 @@ contract BlockExchangeTest is Test {
         vm.prank(investor);
         smeToken.castVote(votes);
 
-        assertEq(
-            smeToken.governanceVotes(investor),
-            votes,
-            "Investor governance votes should match the cast amount"
-        );
+        assertEq(smeToken.governanceVotes(investor), votes, "Investor governance votes should match the cast amount");
     }
 
     // Helper function to simulate HTS balance checks (since we’re not on Hedera)

@@ -36,13 +36,8 @@ contract BlockExchangeFactoryTest is Test {
 
     function testDeployExchange() public {
         vm.startPrank(owner);
-        address exchangeAddr = factory.deployExchange(
-            "TestCompany",
-            mockTokenId,
-            mockUsdtId,
-            treasuryWallet,
-            INITIAL_SUPPLY
-        );
+        address exchangeAddr =
+            factory.deployExchange("TestCompany", mockTokenId, mockUsdtId, treasuryWallet, INITIAL_SUPPLY);
         vm.stopPrank();
 
         // Verify exchange was deployed
@@ -56,23 +51,11 @@ contract BlockExchangeFactoryTest is Test {
 
     function testCannotDeployDuplicateCompany() public {
         vm.startPrank(owner);
-        factory.deployExchange(
-            "TestCompany",
-            mockTokenId,
-            mockUsdtId,
-            treasuryWallet,
-            INITIAL_SUPPLY
-        );
+        factory.deployExchange("TestCompany", mockTokenId, mockUsdtId, treasuryWallet, INITIAL_SUPPLY);
 
         // Try to deploy with same company name
         vm.expectRevert("SME already has a contract");
-        factory.deployExchange(
-            "TestCompany",
-            mockTokenId,
-            mockUsdtId,
-            treasuryWallet,
-            INITIAL_SUPPLY
-        );
+        factory.deployExchange("TestCompany", mockTokenId, mockUsdtId, treasuryWallet, INITIAL_SUPPLY);
         vm.stopPrank();
     }
 }

@@ -172,7 +172,8 @@ contract BlockExchange is Ownable, HederaTokenService {
         require(shareholderBalance > 0, "No shares owned");
 
         // Calculate claimable amount based on shareholding proportion
-        uint256 claimableAmount = (totalDividendsDistributed * shareholderBalance) / totalSupply[hederaTokenServiceTokenId];
+        uint256 claimableAmount =
+            (totalDividendsDistributed * shareholderBalance) / totalSupply[hederaTokenServiceTokenId];
         require(claimableAmount > withdrawnDividends[msg.sender], "No dividends to claim");
 
         // Determine amount to withdraw

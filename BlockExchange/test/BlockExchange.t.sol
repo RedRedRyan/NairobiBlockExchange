@@ -12,9 +12,9 @@ contract BlockExchangeTest is Test {
     address public mockHtsTokenId; // Mock HTS token ID
     address public mockUsdtTokenId; // Mock USDT token ID
 
-    // Initial supply for the security token
-    uint256 constant INITIAL_SUPPLY = 10000 * 10 ** 18; // 10,000 tokens
-    uint256 constant INITIAL_USDT = 1000000 * 10 ** 18; // 1,000,000 USDT
+    // Initial supply for the security token (6 decimals)
+    uint256 constant INITIAL_SUPPLY = 10000 * 10 ** 6; // 10,000 tokens
+    uint256 constant INITIAL_USDT = 1000000 * 10 ** 6; // 1,000,000 USDT
 
     function setUp() public {
         owner = address(this);
@@ -46,19 +46,19 @@ contract BlockExchangeTest is Test {
             INITIAL_SUPPLY
         );
 
-        // Whitelist the investor
+        // Whitelist the investor (treasuryWallet is already whitelisted by constructor)
         smeToken.whitelistInvestor(investor, true);
 
         // Set initial USDT balance for treasury (simulating HTS transfer)
         smeToken.setInitialUsdtBalance(INITIAL_USDT);
     }
 
-    function testWhitelistInvestor() public {
+    function testWhitelistInvestor() public view {
         assertEq(smeToken.isWhitelisted(investor), true, "Investor should be whitelisted");
     }
 
     function testDistributeDividends() public {
-        uint256 amount = 1000 * 10 ** 18; // 1000 USDT
+        uint256 amount = 1000 * 10 ** 6; // 1000 USDT
 
         // Distribute dividends
         smeToken.distributeDividends(amount);
@@ -71,7 +71,7 @@ contract BlockExchangeTest is Test {
     }
 
     function testClaimDividends() public {
-        uint256 dividendAmount = 1000 * 10 ** 18; // 1000 USDT to distribute
+        uint256 dividendAmount = 1000 * 10 ** 6; // 1000 USDT to distribute
 
         // Simulate investor holding 10% of total supply
         uint256 investorBalance = INITIAL_SUPPLY / 10; // 1000 tokens
@@ -103,7 +103,7 @@ contract BlockExchangeTest is Test {
     }
 
     function testCastVote() public {
-        uint256 votes = 500 * 10 ** 18; // 500 tokens worth of votes
+        uint256 votes = 500 * 10 ** 6; // 500 tokens worth of votes
 
         // Simulate investor holding some tokens
         smeToken.transferTokens(mockHtsTokenId, treasuryWallet, investor, votes);
@@ -120,7 +120,7 @@ contract BlockExchangeTest is Test {
     }
 
     // Helper function to simulate HTS balance checks (since we’re not on Hedera)
-    function testInitialBalances() public {
+    function testInitialBalances() public view {
         assertEq(
             smeToken.balanceOf(mockHtsTokenId, treasuryWallet),
             INITIAL_SUPPLY,

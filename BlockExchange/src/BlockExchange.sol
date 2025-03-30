@@ -87,6 +87,10 @@ contract BlockExchange is Ownable, HederaTokenService {
         totalSupply[hederaTokenServiceTokenId] = _initialSecurityTokenSupply;
         tokenBalances[hederaTokenServiceTokenId][treasuryWallet] = _initialSecurityTokenSupply;
 
+        // Automatically whitelist the treasury wallet
+        isWhitelisted[treasuryWallet] = true;
+        emit ShareholderWhitelisted(treasuryWallet, true);
+
         // Associate the contract with both tokens to enable interactions
         int256 responseCode = associateToken(address(this), hederaTokenServiceTokenId);
         require(responseCode == HederaResponseCodes.SUCCESS, "Security token association failed");

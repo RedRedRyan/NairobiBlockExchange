@@ -18,7 +18,7 @@ NBX leverages blockchain technology to facilitate the issuance and trading of se
 - **Blockchain Infrastructure:** Hedera Hashgraph for fast, low-cost, and secure transactions.  
 - **Security Tokens:** Hedera Token Service (HTS) for tokenized shares.  
 - **Smart Contracts:** Enforce investor rights, dividend payouts, and governance.  
-- **KYC/AML Compliance:** On-chain identity verification and whitelisting of investors.  
+- **KYC/AML Compliance:** Identity verification and whitelisting of investors.  
 - **Auditing & Regulatory Access:** Real-time financial data accessible by regulators.
 
 ## **4. User Roles & Flow**  

@@ -9,8 +9,14 @@ import "../src/NBXLiquidityProvider.sol";
 
 contract DeployScript is Script {
     function run() external {
-        // Start broadcasting transactions using the private key from the environment
-        vm.startBroadcast();
+        // Load environment variables - this is the standard way to get private keys in Foundry
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address usdtTokenId = vm.envAddress("USDT_TOKEN_ADDRESS");
+        address treasuryWallet = vm.envAddress("TREASURY_WALLET");
+        address feeCollector = vm.envAddress("FEE_COLLECTOR_ADDRESS");
+        
+        // Start broadcasting transactions using the loaded private key
+        vm.startBroadcast(deployerPrivateKey);
 
         // Step 1: Deploy BlockExchangeFactory
         BlockExchangeFactory factory = new BlockExchangeFactory();
@@ -19,9 +25,9 @@ contract DeployScript is Script {
         string memory companyName = "Example Company";
         string memory tokenSymbol = "EXC";
         uint256 initialSupply = 1_000_000 * 10**6; // 1 million tokens with 6 decimals
-        address usdtTokenId = 0xYourUsdtTokenAddressHere; // Replace with actual USDT token address on Hedera
-        address treasuryWallet = 0xYourTreasuryAddressHere; // Replace with your treasury wallet address
-        uint256 tokenCreationFee = 100 * 10**8; // 100 HBAR in tinybars for token creation on Hedera
+        
+        // Set token creation fee from environment or use a default
+        uint256 tokenCreationFee = vm.envOr("TOKEN_CREATION_FEE", 100 * 10**8); // 100 HBAR in tinybars
 
         // Step 3: Deploy a BlockExchange instance via the factory
         address exchangeAddress = factory.deployExchange{value: tokenCreationFee}(
@@ -32,8 +38,10 @@ contract DeployScript is Script {
             treasuryWallet
         );
 
+        // Get the deployed BlockExchange instance
+        BlockExchange exchange = BlockExchange(exchangeAddress);
+        
         // Step 4: Deploy NBXOrderBook
-        address feeCollector = 0xYourFeeCollectorAddressHere; // Replace with your fee collector address
         NBXOrderBook orderBook = new NBXOrderBook(address(factory), feeCollector);
 
         // Step 5: Deploy NBXLiquidityProvider
@@ -43,10 +51,16 @@ contract DeployScript is Script {
             usdtTokenId
         );
 
+        // Step 6: Set initial USDT balance in the BlockExchange contract
+        // This can be adjusted based on your requirements
+        uint256 initialUsdtBalance = 1_000_000 * 10**6; // 1 million USDT with 6 decimals
+        exchange.setInitialUsdtBalance(initialUsdtBalance);
+
         // Stop broadcasting transactions
         vm.stopBroadcast();
 
         // Log the deployed contract addresses for reference
+        console.log("Deployment complete!");
         console.log("BlockExchangeFactory deployed at:", address(factory));
         console.log("BlockExchange deployed at:", exchangeAddress);
         console.log("NBXOrderBook deployed at:", address(orderBook));

@@ -4,8 +4,7 @@ import "./BlockExchange.sol";
 import "./BlockExchangeFactory.sol";
 import "./NBXOrderBook.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-/**
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";/**
  * @title NBXLiquidityProvider
  * @dev Incentivizes market makers to provide liquidity for security tokens
  */

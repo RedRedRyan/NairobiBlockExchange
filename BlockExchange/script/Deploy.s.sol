@@ -14,46 +14,39 @@ contract DeployScript is Script {
         address usdtTokenId = vm.envAddress("USDT_TOKEN_ADDRESS");
         address treasuryWallet = vm.envAddress("TREASURY_WALLET");
         address feeCollector = vm.envAddress("FEE_COLLECTOR_ADDRESS");
-        
+
         // Start broadcasting transactions using the loaded private key
         vm.startBroadcast(deployerPrivateKey);
 
         // Step 1: Deploy BlockExchangeFactory
         BlockExchangeFactory factory = new BlockExchangeFactory();
-        
+
         // Step 2: Define parameters for BlockExchange deployment
         string memory companyName = "Example Company";
         string memory tokenSymbol = "EXC";
-        uint256 initialSupply = 1_000_000 * 10**6; // 1 million tokens with 6 decimals
-        
+        uint256 initialSupply = 1_000_000 * 10 ** 6; // 1 million tokens with 6 decimals
+
         // Set token creation fee from environment or use a default
-        uint256 tokenCreationFee = vm.envOr("TOKEN_CREATION_FEE", 100 * 10**8); // 100 HBAR in tinybars
+        uint256 tokenCreationFee = vm.envOr("TOKEN_CREATION_FEE", 100 * 10 ** 8); // 100 HBAR in tinybars
 
         // Step 3: Deploy a BlockExchange instance via the factory
         address exchangeAddress = factory.deployExchange{value: tokenCreationFee}(
-            companyName,
-            tokenSymbol,
-            initialSupply,
-            usdtTokenId,
-            treasuryWallet
+            companyName, tokenSymbol, initialSupply, usdtTokenId, treasuryWallet
         );
 
         // Get the deployed BlockExchange instance
         BlockExchange exchange = BlockExchange(exchangeAddress);
-        
+
         // Step 4: Deploy NBXOrderBook
         NBXOrderBook orderBook = new NBXOrderBook(address(factory), feeCollector);
 
         // Step 5: Deploy NBXLiquidityProvider
-        NBXLiquidityProvider liquidityProvider = new NBXLiquidityProvider(
-            address(factory),
-            address(orderBook),
-            usdtTokenId
-        );
+        NBXLiquidityProvider liquidityProvider =
+            new NBXLiquidityProvider(address(factory), address(orderBook), usdtTokenId);
 
         // Step 6: Set initial USDT balance in the BlockExchange contract
         // This can be adjusted based on your requirements
-        uint256 initialUsdtBalance = 1_000_000 * 10**6; // 1 million USDT with 6 decimals
+        uint256 initialUsdtBalance = 1_000_000 * 10 ** 6; // 1 million USDT with 6 decimals
         exchange.setInitialUsdtBalance(initialUsdtBalance);
 
         // Stop broadcasting transactions

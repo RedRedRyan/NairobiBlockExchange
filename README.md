@@ -1,6 +1,6 @@
 **Nairobi Block Exchange (NBX) White Paper** 
 The contracts are deloyed 
-1. BlockExchangeFactory: 0xb0C3AcD5d1e89aCf92E2b760a00F4795b686517d
+1. BlockExchangeFactory: (0xb0C3AcD5d1e89aCf92E2b760a00F4795b686517d)["https://hashscan.io/testnet/contract/0xb0C3AcD5d1e89aCf92E2b760a00F4795b686517d"]
     - This is the factory contract that manages the creation of new exchange instances.
   2. BlockExchange: 0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
     - This is the main exchange contract for "Example Company" with token symbol "EXC".
@@ -17,6 +17,11 @@ The contracts are deloyed
     - It allows users to lock collateral and earn rewards for providing liquidity.
   6. USDT Token Address: 0x000000000000000000000000000000000042ddf1
     - This is the token used for payments, fees, and dividends within the system.
+
+  - https://hashscan.io/testnet/contract/0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
+  - https://hashscan.io/testnet/contract/0xd120E0C278d1b2aeE35495F94187D61F5229eD33
+  - https://hashscan.io/testnet/contract/0xf391EAd8312a21526cb12328e334B3525da603dc
+  - https://hashscan.io/testnet/contract/0x7fDc918018ebF11749Df95467C98bdcEf17EF0FC
 
 
 

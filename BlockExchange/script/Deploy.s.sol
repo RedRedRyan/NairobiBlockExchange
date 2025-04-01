@@ -14,6 +14,7 @@ contract DeployScript is Script {
         address usdtTokenId = vm.envAddress("USDT_TOKEN_ADDRESS");
         address treasuryWallet = vm.envAddress("TREASURY_WALLET");
         address feeCollector = vm.envAddress("FEE_COLLECTOR_ADDRESS");
+        address htsServiceAddress = vm.envAddress("HTS_SERVICE_ADDRESS");
 
         // Start broadcasting transactions using the loaded private key
         vm.startBroadcast(deployerPrivateKey);
@@ -27,7 +28,12 @@ contract DeployScript is Script {
         uint256 initialSupply = 1_000_000 * 10 ** 6; // 1 million tokens with 6 decimals
 
         // Set token creation fee from environment or use a default
-        uint256 tokenCreationFee = vm.envOr("TOKEN_CREATION_FEE", 100 * 10 ** 8); // 100 HBAR in tinybars
+        uint256 tokenCreationFee;
+        try vm.envUint("TOKEN_CREATION_FEE") returns (uint256 fee) {
+            tokenCreationFee = fee;
+        } catch {
+            tokenCreationFee = 100 * 10 ** 8; // Default: 100 HBAR in tinybars
+        }
 
         // Step 3: Deploy a BlockExchange instance via the factory
         address exchangeAddress = factory.deployExchange{value: tokenCreationFee}(
@@ -41,8 +47,13 @@ contract DeployScript is Script {
         NBXOrderBook orderBook = new NBXOrderBook(address(factory), feeCollector);
 
         // Step 5: Deploy NBXLiquidityProvider
-        NBXLiquidityProvider liquidityProvider =
-            new NBXLiquidityProvider(address(factory), address(orderBook), usdtTokenId);
+        // Note: The constructor now requires 4 parameters - factory, orderBook, htsService, and usdtToken
+        NBXLiquidityProvider liquidityProvider = new NBXLiquidityProvider(
+            address(factory), 
+            address(orderBook), 
+            htsServiceAddress, 
+            usdtTokenId
+        );
 
         // Step 6: Set initial USDT balance in the BlockExchange contract
         // This can be adjusted based on your requirements

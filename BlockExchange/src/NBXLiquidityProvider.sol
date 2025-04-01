@@ -6,12 +6,23 @@ import "./BlockExchangeFactory.sol";
 import "./NBXOrderBook.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+// Interface for Hedera Token Service token
+interface IHTS {
+    function associate(address token) external;
+    function dissociate(address token) external;
+    function transferToken(address token, address to, uint256 amount) external returns (bool);
+    function transferTokenFrom(address token, address from, address to, uint256 amount) external returns (bool);
+    function allowance(address token, address owner, address spender) external view returns (uint256);
+    function approve(address token, address spender, uint256 amount) external returns (bool);
+    function getBalance(address token, address account) external view returns (uint256);
+}
+
 /**
  * @title NBXLiquidityProvider
  * @dev Incentivizes market makers to provide liquidity for security tokens
  */
-
-contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
+contract NBXLiquidityProvider is Ownable(msg.sender), ReentrancyGuard {
     BlockExchangeFactory public factory;
     NBXOrderBook public orderBook;
 
@@ -50,17 +61,27 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
     event CollateralReleased(address indexed provider, address indexed tokenAddress, uint256 amount);
     event RewardsPaid(address indexed provider, address indexed tokenAddress, uint256 amount);
 
-    // USDT contract for reward payments and collateral
-    IERC20 public usdtToken;
+    // HTS service address and USDT token address
+    IHTS public htsService;
+    address public usdtTokenAddress;
 
     // Constants
     uint256 public constant PRECISION = 10000; // For basis points calculations
     uint256 public constant DAY_IN_SECONDS = 86400;
 
-    constructor(address _factoryAddress, address _orderBookAddress, address _usdtAddress) {
+    constructor(
+        address _factoryAddress,
+        address _orderBookAddress,
+        address _htsServiceAddress,
+        address _usdtTokenAddress
+    ) {
         factory = BlockExchangeFactory(_factoryAddress);
         orderBook = NBXOrderBook(_orderBookAddress);
-        usdtToken = IERC20(_usdtAddress);
+        htsService = IHTS(_htsServiceAddress);
+        usdtTokenAddress = _usdtTokenAddress;
+
+        // Associate this contract with the USDT token
+        htsService.associate(usdtTokenAddress);
     }
 
     /**
@@ -133,8 +154,11 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
         require(block.timestamp < incentivePrograms[_tokenAddress].programEnd, "Program has ended");
         require(_amount >= incentivePrograms[_tokenAddress].minLockupAmount, "Amount below minimum");
 
-        // Transfer USDT from provider to contract
-        require(usdtToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+        // Check if provider has sufficient allowance
+        require(htsService.allowance(usdtTokenAddress, msg.sender, address(this)) >= _amount, "Insufficient allowance");
+
+        // Transfer HTS USDT from provider to contract
+        require(htsService.transferTokenFrom(usdtTokenAddress, msg.sender, address(this), _amount), "Transfer failed");
 
         // Update records
         lockedCollateral[_tokenAddress][msg.sender] += _amount;
@@ -159,8 +183,8 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
         lockedCollateral[_tokenAddress][msg.sender] = 0;
         liquidityProviders[msg.sender].currentLockedAmount -= amount;
 
-        // Transfer USDT back to provider
-        require(usdtToken.transfer(msg.sender, amount), "Transfer failed");
+        // Transfer HTS USDT back to provider
+        require(htsService.transferToken(usdtTokenAddress, msg.sender, amount), "Transfer failed");
 
         emit CollateralReleased(msg.sender, _tokenAddress, amount);
     }
@@ -168,12 +192,12 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
     /**
      * @dev Check if a provider meets the spread requirements
      */
-    function meetsSpreadRequirements(address _provider, address _tokenAddress) public view returns (bool) {
+    function meetsSpreadRequirements(address _provider, string memory _companyName,address _tokenAddress) public view returns (bool) {
         IncentiveProgram memory program = incentivePrograms[_tokenAddress];
         if (!program.active) return false;
 
         // Get the exchange for this token
-        address exchangeAddress = factory.getExchange(_tokenAddress);
+        address exchangeAddress = factory.getSMEContract(_companyName);
         if (exchangeAddress == address(0)) return false;
 
         // Get best bid and ask
@@ -195,36 +219,35 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
 
         return hasBid && hasAsk && bidSizeOk && askSizeOk && spread <= program.spreadRequirement;
     }
-
     /**
-     * @dev Calculate daily rewards for a provider
-     */
-    function calculateDailyReward(address _provider, address _tokenAddress) public view returns (uint256) {
-        if (!meetsSpreadRequirements(_provider, _tokenAddress)) return 0;
+ * @dev Calculate daily rewards for a provider
+ */
+function calculateDailyReward(address _provider, string memory _companyName, address _tokenAddress) public view returns (uint256) {
+    if (!meetsSpreadRequirements(_provider, _companyName, _tokenAddress)) return 0;
 
-        uint256 locked = lockedCollateral[_tokenAddress][_provider];
-        uint256 rate = incentivePrograms[_tokenAddress].rewardRate;
+    uint256 locked = lockedCollateral[_tokenAddress][_provider];
+    uint256 rate = incentivePrograms[_tokenAddress].rewardRate;
 
-        return (locked * rate) / PRECISION;
-    }
+    return (locked * rate) / PRECISION;
+}
 
     /**
      * @dev Claim rewards for a token
      */
-    function claimRewards(address _tokenAddress) external nonReentrant {
+    function claimRewards(address _tokenAddress,string memory _companyName) external nonReentrant {
         require(liquidityProviders[msg.sender].active, "Not an active liquidity provider");
         require(incentivePrograms[_tokenAddress].active, "Program not active");
         require(lockedCollateral[_tokenAddress][msg.sender] > 0, "No collateral locked");
 
-        uint256 reward = calculateDailyReward(msg.sender, _tokenAddress);
+        uint256 reward = calculateDailyReward(msg.sender,_companyName, _tokenAddress);
         require(reward > 0, "No rewards to claim");
 
         // Update records
         liquidityProviders[msg.sender].totalRewardsEarned += reward;
         totalLiquidityRewards[_tokenAddress] += reward;
 
-        // Transfer rewards to provider
-        require(usdtToken.transfer(msg.sender, reward), "Transfer failed");
+        // Transfer HTS rewards to provider
+        require(htsService.transferToken(usdtTokenAddress, msg.sender, reward), "Transfer failed");
 
         emit RewardsPaid(msg.sender, _tokenAddress, reward);
     }
@@ -241,17 +264,30 @@ contract NBXLiquidityProvider is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Fund the contract with USDT for rewards
+     * @dev Fund the contract with HTS USDT for rewards
      */
     function fundRewards(uint256 _amount) external onlyOwner {
-        require(usdtToken.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+        require(htsService.transferTokenFrom(usdtTokenAddress, msg.sender, address(this), _amount), "Transfer failed");
     }
 
     /**
      * @dev Emergency withdraw function for owner
      */
     function emergencyWithdraw(address _token, uint256 _amount) external onlyOwner {
-        IERC20 token = IERC20(_token);
-        require(token.transfer(owner(), _amount), "Transfer failed");
+        require(htsService.transferToken(_token, owner(), _amount), "Transfer failed");
+    }
+
+    /**
+     * @dev Associate this contract with a new token
+     */
+    function associateToken(address _token) external onlyOwner {
+        htsService.associate(_token);
+    }
+
+    /**
+     * @dev Dissociate this contract from a token
+     */
+    function dissociateToken(address _token) external onlyOwner {
+        htsService.dissociate(_token);
     }
 }

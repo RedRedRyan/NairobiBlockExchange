@@ -16,6 +16,9 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
     // Fee configuration
     uint256 public tradingFeePercentage = 25; // 0.25% in basis points (100 = 1%)
     address public feeCollector;
+    
+    // Order expiration setting
+    uint256 public constant MAX_ORDER_AGE = 30 days;
 
     enum OrderType {
         BUY,
@@ -103,7 +106,7 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
         });
 
         userOrders[msg.sender].push(orderId);
-        buyOrders[tokenAddress].push(orderId);
+        _insertBuyOrder(tokenAddress, orderId);
 
         // Try to match with existing sell orders
         _matchOrders(orderId);
@@ -145,7 +148,7 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
         });
 
         userOrders[msg.sender].push(orderId);
-        sellOrders[tokenAddress].push(orderId);
+        _insertSellOrder(tokenAddress, orderId);
 
         // Try to match with existing buy orders
         _matchOrders(orderId);
@@ -161,6 +164,42 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
         Order storage order = orders[orderId];
         require(order.maker == msg.sender, "Not order owner");
         require(order.status == OrderStatus.OPEN, "Order not open");
+
+        order.status = OrderStatus.CANCELLED;
+
+        // Return reserved assets
+        BlockExchange exchange = _getExchangeForToken(order.tokenAddress);
+
+        if (order.orderType == OrderType.BUY) {
+            uint256 remainingAmount = order.amount - order.filledAmount;
+            uint256 remainingCost = (remainingAmount * order.price) / 1e6;
+            if (remainingCost > 0) {
+                exchange.transferTokens(exchange.usdtTokenId(), address(this), order.maker, remainingCost);
+            }
+        } else {
+            // SELL
+            uint256 remainingAmount = order.amount - order.filledAmount;
+            if (remainingAmount > 0) {
+                exchange.transferTokens(order.tokenAddress, address(this), order.maker, remainingAmount);
+            }
+        }
+
+        // Clean order list occasionally to optimize gas
+        if (block.timestamp % 10 == 0) {
+            _cleanFilledOrders(order.tokenAddress, order.orderType == OrderType.BUY);
+        }
+
+        emit OrderCancelled(orderId);
+    }
+
+    /**
+     * @dev Cancel expired orders (anyone can call)
+     * @param orderId ID of the order to cancel
+     */
+    function cancelExpiredOrder(uint256 orderId) external nonReentrant {
+        Order storage order = orders[orderId];
+        require(order.status == OrderStatus.OPEN, "Order not open");
+        require(block.timestamp > order.timestamp + MAX_ORDER_AGE, "Order not expired");
 
         order.status = OrderStatus.CANCELLED;
 
@@ -289,6 +328,82 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Check if a specific provider has active orders at a specific price point
+     * @param _provider Address of the provider
+     * @param tokenAddress Address of the token
+     * @param price Price point to check
+     * @param isBid Whether to check buy orders (true) or sell orders (false)
+     */
+    function hasActiveOrder(
+        address _provider,
+        address tokenAddress,
+        uint256 price,
+        bool isBid
+    ) external view returns (bool) {
+        uint256[] storage ordersList = isBid ? 
+            buyOrders[tokenAddress] : 
+            sellOrders[tokenAddress];
+        
+        for (uint i = 0; i < ordersList.length; i++) {
+            Order storage order = orders[ordersList[i]];
+            if (order.maker == _provider &&
+                order.price == price &&
+                order.status == OrderStatus.OPEN) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @dev Get the best bid (highest buy price) and its size for a token
+     * @param tokenAddress Address of the token
+     * @return price Price of the best bid
+     * @return amount Size of the best bid
+     */
+    function getBestBid(address tokenAddress) external view returns (uint256, uint256) {
+        uint256[] storage tokenBuyOrders = buyOrders[tokenAddress];
+        if (tokenBuyOrders.length == 0) return (0, 0);
+        
+        uint256 bestPrice = 0;
+        uint256 bestAmount = 0;
+        
+        for (uint256 i = 0; i < tokenBuyOrders.length; i++) {
+            Order storage order = orders[tokenBuyOrders[i]];
+            if (order.status == OrderStatus.OPEN && order.price > bestPrice) {
+                bestPrice = order.price;
+                bestAmount = order.amount - order.filledAmount;
+            }
+        }
+        
+        return (bestPrice, bestAmount);
+    }
+
+    /**
+     * @dev Get the best ask (lowest sell price) and its size for a token
+     * @param tokenAddress Address of the token
+     * @return price Price of the best ask
+     * @return amount Size of the best ask
+     */
+    function getBestAsk(address tokenAddress) external view returns (uint256, uint256) {
+        uint256[] storage tokenSellOrders = sellOrders[tokenAddress];
+        if (tokenSellOrders.length == 0) return (0, 0);
+        
+        uint256 bestPrice = type(uint256).max;
+        uint256 bestAmount = 0;
+        
+        for (uint256 i = 0; i < tokenSellOrders.length; i++) {
+            Order storage order = orders[tokenSellOrders[i]];
+            if (order.status == OrderStatus.OPEN && (bestPrice == type(uint256).max || order.price < bestPrice)) {
+                bestPrice = order.price;
+                bestAmount = order.amount - order.filledAmount;
+            }
+        }
+        
+        return (bestPrice == type(uint256).max ? 0 : bestPrice, bestAmount);
+    }
+
+    /**
      * @dev Internal function to match an order against the order book
      */
     function _matchOrders(uint256 orderId) internal {
@@ -306,6 +421,12 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
      */
     function _matchBuyOrder(Order storage buyOrder) internal {
         if (buyOrder.status != OrderStatus.OPEN) return;
+        
+        // Check if order is expired
+        if (block.timestamp > buyOrder.timestamp + MAX_ORDER_AGE) {
+            buyOrder.status = OrderStatus.CANCELLED;
+            return;
+        }
 
         uint256[] storage tokenSellOrders = sellOrders[buyOrder.tokenAddress];
 
@@ -315,6 +436,13 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
 
             if (sellOrder.status != OrderStatus.OPEN) continue;
             if (sellOrder.price > buyOrder.price) continue; // Price too high
+            if (sellOrder.maker == buyOrder.maker) continue; // Prevent self-trading
+            
+            // Check if sell order is expired
+            if (block.timestamp > sellOrder.timestamp + MAX_ORDER_AGE) {
+                sellOrder.status = OrderStatus.CANCELLED;
+                continue;
+            }
 
             // Calculate match amount
             uint256 remainingBuyAmount = buyOrder.amount - buyOrder.filledAmount;
@@ -361,6 +489,11 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
             emit OrderFilled(sellOrder.id, sellOrder.maker, buyOrder.maker, matchAmount, executionPrice);
         }
 
+        // Clean up order book occasionally
+        if (block.timestamp % 10 == 0) {
+            _cleanFilledOrders(buyOrder.tokenAddress, false); // Clean sell orders
+        }
+
         // Refund excess USDT if order was not fully filled and is no longer open
         if (buyOrder.status != OrderStatus.OPEN && buyOrder.filledAmount < buyOrder.amount) {
             uint256 remainingAmount = buyOrder.amount - buyOrder.filledAmount;
@@ -378,6 +511,12 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
      */
     function _matchSellOrder(Order storage sellOrder) internal {
         if (sellOrder.status != OrderStatus.OPEN) return;
+        
+        // Check if order is expired
+        if (block.timestamp > sellOrder.timestamp + MAX_ORDER_AGE) {
+            sellOrder.status = OrderStatus.CANCELLED;
+            return;
+        }
 
         uint256[] storage tokenBuyOrders = buyOrders[sellOrder.tokenAddress];
 
@@ -387,6 +526,13 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
 
             if (buyOrder.status != OrderStatus.OPEN) continue;
             if (buyOrder.price < sellOrder.price) continue; // Price too low
+            if (buyOrder.maker == sellOrder.maker) continue; // Prevent self-trading
+            
+            // Check if buy order is expired
+            if (block.timestamp > buyOrder.timestamp + MAX_ORDER_AGE) {
+                buyOrder.status = OrderStatus.CANCELLED;
+                continue;
+            }
 
             // Calculate match amount
             uint256 remainingSellAmount = sellOrder.amount - sellOrder.filledAmount;
@@ -433,6 +579,11 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
             emit OrderFilled(buyOrder.id, buyOrder.maker, sellOrder.maker, matchAmount, executionPrice);
         }
 
+        // Clean up order book occasionally
+        if (block.timestamp % 10 == 0) {
+            _cleanFilledOrders(sellOrder.tokenAddress, true); // Clean buy orders
+        }
+
         // Return unsold tokens if order was not fully filled and is no longer open
         if (sellOrder.status != OrderStatus.OPEN && sellOrder.filledAmount < sellOrder.amount) {
             uint256 remainingAmount = sellOrder.amount - sellOrder.filledAmount;
@@ -442,6 +593,91 @@ contract NBXOrderBook is Ownable, ReentrancyGuard {
                 exchange.transferTokens(sellOrder.tokenAddress, address(this), sellOrder.maker, remainingAmount);
             }
         }
+    }
+
+    /**
+     * @dev Helper function to clean filled or cancelled orders from the order list
+     * @param tokenAddress Address of the token
+     * @param isBid Whether to clean buy orders (true) or sell orders (false)
+     */
+    function _cleanFilledOrders(address tokenAddress, bool isBid) internal {
+        uint256[] storage ordersList = isBid ? 
+            buyOrders[tokenAddress] : 
+            sellOrders[tokenAddress];
+            
+        uint256 i = 0;
+        while (i < ordersList.length) {
+            if (orders[ordersList[i]].status != OrderStatus.OPEN) {
+                ordersList[i] = ordersList[ordersList.length - 1];
+                ordersList.pop();
+            } else {
+                i++;
+            }
+        }
+    }
+
+    /**
+     * @dev Helper function to insert a buy order with price-time priority (highest price first)
+     * @param tokenAddress Address of the token
+     * @param orderId ID of the order to insert
+     */
+    function _insertBuyOrder(address tokenAddress, uint256 orderId) internal {
+        uint256[] storage orderList = buyOrders[tokenAddress];
+        
+        // If empty, just add
+        if (orderList.length == 0) {
+            orderList.push(orderId);
+            return;
+        }
+        
+        Order storage newOrder = orders[orderId];
+        
+        // Find insertion point (highest price first)
+        uint256 i = 0;
+        while (i < orderList.length && 
+               orders[orderList[i]].status == OrderStatus.OPEN &&
+               orders[orderList[i]].price >= newOrder.price) {
+            i++;
+        }
+        
+        // Insert at position i
+        orderList.push(orderList[orderList.length - 1]); // Make space
+        for (uint256 j = orderList.length - 1; j > i; j--) {
+            orderList[j] = orderList[j - 1];
+        }
+        orderList[i] = orderId;
+    }
+
+    /**
+     * @dev Helper function to insert a sell order with price-time priority (lowest price first)
+     * @param tokenAddress Address of the token
+     * @param orderId ID of the order to insert
+     */
+    function _insertSellOrder(address tokenAddress, uint256 orderId) internal {
+        uint256[] storage orderList = sellOrders[tokenAddress];
+        
+        // If empty, just add
+        if (orderList.length == 0) {
+            orderList.push(orderId);
+            return;
+        }
+        
+        Order storage newOrder = orders[orderId];
+        
+        // Find insertion point (lowest price first)
+        uint256 i = 0;
+        while (i < orderList.length && 
+               orders[orderList[i]].status == OrderStatus.OPEN &&
+               orders[orderList[i]].price <= newOrder.price) {
+            i++;
+        }
+        
+        // Insert at position i
+        orderList.push(orderList[orderList.length - 1]); // Make space
+        for (uint256 j = orderList.length - 1; j > i; j--) {
+            orderList[j] = orderList[j - 1];
+        }
+        orderList[i] = orderId;
     }
 
     /**

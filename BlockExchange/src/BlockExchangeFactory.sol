@@ -16,13 +16,13 @@ contract BlockExchangeFactory is Ownable {
         string memory _companyName,
         string memory _tokenSymbol,
         uint256 _initialSecurityTokenSupply,
-        address _usdtTokenId,
+        address _usdtTokenAddress,
         address _treasuryWallet
-    ) external payable onlyOwner returns (address) {
+    ) external onlyOwner returns (address) {
         require(smeExchanges[_companyName] == address(0), "SME already has a contract");
 
-        BlockExchange newExchange = new BlockExchange{value: msg.value}(
-            _companyName, _tokenSymbol, _initialSecurityTokenSupply, _usdtTokenId, _treasuryWallet
+        BlockExchange newExchange = new BlockExchange(
+            _companyName, _tokenSymbol, _initialSecurityTokenSupply, _usdtTokenAddress, _treasuryWallet
         );
 
         newExchange.transferOwnership(msg.sender);

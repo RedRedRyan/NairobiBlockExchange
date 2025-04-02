@@ -1,8 +1,8 @@
 **Nairobi Block Exchange (NBX) White Paper** 
 The contracts are deloyed 
-  1. BlockExchangeFactory: https://hashscan.io/testnet/contract/0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
+  1. BlockExchangeFactory: https://hashscan.io/testnet/contract/0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552 </br>
     - This is the factory contract that manages the creation of new exchange instances.
-  2. BlockExchange:   https://hashscan.io/testnet/contract/0xd120E0C278d1b2aeE35495F94187D61F5229eD33
+  2. BlockExchange:   https://hashscan.io/testnet/contract/0xd120E0C278d1b2aeE35495F94187D61F5229eD33</br>
     - This is the main exchange contract for "Example Company" with token symbol "EXC".
     - It's responsible for managing security tokens, dividends, and governance.
   3. SecurityToken: 

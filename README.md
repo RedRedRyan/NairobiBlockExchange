@@ -1,27 +1,27 @@
 **Nairobi Block Exchange (NBX) White Paper** 
 The contracts are deloyed 
-1. BlockExchangeFactory: (0xb0C3AcD5d1e89aCf92E2b760a00F4795b686517d)["https://hashscan.io/testnet/contract/0xb0C3AcD5d1e89aCf92E2b760a00F4795b686517d"]
+1. BlockExchangeFactory: https://hashscan.io/testnet/contract/0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
     - This is the factory contract that manages the creation of new exchange instances.
-  2. BlockExchange: 0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
+  2. BlockExchange:   https://hashscan.io/testnet/contract/0xd120E0C278d1b2aeE35495F94187D61F5229eD33
     - This is the main exchange contract for "Example Company" with token symbol "EXC".
     - It's responsible for managing security tokens, dividends, and governance.
-  3. SecurityToken: 0xd120E0C278d1b2aeE35495F94187D61F5229eD33
+  3. SecurityToken: 
     - This is the ERC20 token representing "Example Company" shares.
     - Initial supply: 1,000,000 EXC (with 6 decimals)
     - Treasury wallet (0x949aab5677103F953C535D60e5eB9BC94bE19918) now holds all these tokens.
-  4. NBXOrderBook: 0xf391EAd8312a21526cb12328e334B3525da603dc
+  4. NBXOrderBook: https://hashscan.io/testnet/contract/0xf391EAd8312a21526cb12328e334B3525da603dc
     - This contract handles buy/sell orders for security tokens.
     - It includes matching orders, fee collection, and order management features.
-  5. NBXLiquidityProvider: 0x7fDc918018ebF11749Df95467C98bdcEf17EF0FC
+  5. NBXLiquidityProvider: https://hashscan.io/testnet/contract/0x7fDc918018ebF11749Df95467C98bdcEf17EF0FC
     - This contract provides incentives for market makers to add liquidity.
     - It allows users to lock collateral and earn rewards for providing liquidity.
   6. USDT Token Address: 0x000000000000000000000000000000000042ddf1
     - This is the token used for payments, fees, and dividends within the system.
 
-  - https://hashscan.io/testnet/contract/0xaDEC20c5D695F0aeE06edF66E73Dd1E2Fa1a8552
-  - https://hashscan.io/testnet/contract/0xd120E0C278d1b2aeE35495F94187D61F5229eD33
-  - https://hashscan.io/testnet/contract/0xf391EAd8312a21526cb12328e334B3525da603dc
-  - https://hashscan.io/testnet/contract/0x7fDc918018ebF11749Df95467C98bdcEf17EF0FC
+  - 
+  -
+  - 
+  - 
 
 
 
